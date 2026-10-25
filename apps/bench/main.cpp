@@ -43,7 +43,7 @@ double cpu_seconds() {
 void usage() {
   std::puts(
       "embercast_bench [options]\n"
-      "  --backend cpu_naive|cpu_opt  --threads N  --K N --H N --D N --N N\n"
+      "  --backend cpu_naive|cpu_opt|opencl  --threads N  --K N --H N --D N --N N\n"
       "  --episodes N (default 10)  --ticks N (default 120)  --seed0 N (default 1000, TUNE)\n"
       "  --out-dir DIR (default results/raw/bench)  --label TEXT\n"
       "  --baseline FILE  --max-p99-growth PCT (default 50)  --save-baseline FILE");

@@ -14,5 +14,8 @@ target_include_directories(embercast_engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/i
 target_link_libraries(embercast_engine PUBLIC Threads::Threads)
 
 if(EMBERCAST_OPENCL)
-  message(FATAL_ERROR "EMBERCAST_OPENCL: the OpenCL backend is Step 12. It is not implemented yet.")
+  # The backend loads libOpenCL with dlopen() at run time: no SDK needed to build.
+  target_sources(embercast_engine PRIVATE backends/opencl/opencl.cpp)
+  target_compile_definitions(embercast_engine PUBLIC EMBERCAST_HAVE_OPENCL=1)
+  target_link_libraries(embercast_engine PUBLIC ${CMAKE_DL_LIBS})
 endif()

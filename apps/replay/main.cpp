@@ -64,7 +64,7 @@ void usage() {
       "  --stress NAME       none|regime|dropout30|late_scans|stuck\n"
       "  --K N --H N --D N --N N --lambda X --alpha X --switch X --beta X\n"
       "  --no-filter         ensemble without weights/resampling\n"
-      "  --backend NAME      cpu_naive|cpu_opt (default cpu_opt)\n"
+      "  --backend NAME      cpu_naive|cpu_opt|opencl (default cpu_opt)\n"
       "  --engine-threads N  threads inside the backend (default 1)\n"
       "  --jobs N            parallel episodes (default hardware)\n"
       "  --tag TEXT          label written to the CSV\n"

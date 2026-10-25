@@ -79,7 +79,8 @@ class IForecastBackend {
   virtual void rollout(const Ensemble& ens, const StepArgs& a, int H, ForecastOut& out) = 0;
 };
 
-// Names: "cpu_naive", "cpu_opt". threads <= 0 means hardware concurrency.
+// Names: "cpu_naive", "cpu_opt", "opencl" (only with EMBERCAST_OPENCL=ON; throws
+// when no OpenCL device is found). threads <= 0 means hardware concurrency.
 std::unique_ptr<IForecastBackend> make_backend(const std::string& name, int threads = 0);
 
 // Shared reduction: computes p_burn, loss, area and p_lost from the final
