@@ -159,10 +159,25 @@ rule also has an entry.
 - With no lost frames, the remote engine gives the same plans as the
   in-process engine (tests/py/test_live_e2e.py).
 
-## D-020: OpenCL backend (Step 12) not built
-- No OpenCL device is verified on the board (docs/HARDWARE.md Q2). The
-  development container has no OpenCL headers or device. The brief says
-  to build it only if clinfo shows a device. The CMake option stays OFF.
+## D-020: OpenCL backend (Step 12)
+- First decision: not built, because no OpenCL device was verified.
+- Superseded (2026-10-25): `clinfo` on the board shows one device
+  (Mesa rusticl, Adreno "FD702", OpenCL 3.0, 1 compute unit, 844 MHz).
+  See docs/HARDWARE.md Q2. The backend is now built (opencl.cpp).
+- Design: one work-item per (member, cell), one kernel launch per tick.
+  The kernel is a copy of step_reference() with the same Philox draws and
+  uint32 thresholds. The reduction stays on the CPU (reduce_member() in
+  member order). Thus the output is bit-identical to cpu_naive (AC2 test).
+- libOpenCL is loaded with dlopen() at run time. The build needs no SDK
+  or third-party headers. The CMake option stays OFF by default.
+- One launch over all K x cells work-items fails on the board with
+  CL_OUT_OF_RESOURCES (-5) at N = 96, K = 64 (it works at N = 64, K = 24).
+  The backend now launches 4 members per enqueue (global work offset).
+- Result on the board (results/bench_board.md): the opencl backend is
+  correct but much slower than cpu_opt (about 2.0 s against about 22 ms
+  per decision at K = 64). The GPU has 1 compute unit, and the kernel scans
+  the full grid, while cpu_opt visits only the active front. Thus the demo
+  and the evaluation use cpu_opt. A sparse-front GPU kernel is future work.
 
 ## D-021: Optional integrations (Step 14) not built
 - Reason: time box. They are optional and off by default. The core loop
@@ -187,3 +202,34 @@ rule also has an entry.
 - Reason: the Python client package was not found, and installing
   packages on the board needs approval. The router method for
   registration is a command-line option because it is not verified (Q7).
+
+## D-024: CVaR term (G2) is kept; the CVaR95 part of G2 is not met vs B1
+- TEST result: the mean loss is lower than both baselines (CI excludes 0).
+  CVaR95 is lower than B0 (CI excludes 0). CVaR95 vs B1: the CI includes 0
+  in the main run and in all stress runs. The lambda = 0 ablation has the
+  same CVaR95. Thus the CVaR term has no measurable effect on tail loss.
+- Check on TUNE only: sweep lambda {0, 0.5, 1.5, 3, 6} x alpha {0.8, 0.9,
+  0.95} (results/tune_cvar_sweep.md). All settings are in a band of about
+  15 loss units (about 2 %) on CVaR95. On 40 seeds, CVaR95 is the mean of
+  the 2 worst episodes, so this band is noise.
+- Decision: do not change lambda or alpha. Do not run TEST again. Report
+  the CVaR95 part of G2 as not met against B1.
+- Probable reason: the worst episodes are fast fires that burn most
+  clusters before crews arrive. No crew plan changes them much.
+
+## D-025: Cross-build with zig (board has no compiler)
+- The board image has no gcc, g++ or cmake, and no internet connection.
+  Installing packages on the board needs approval and a network.
+- Decision: cross-build on the laptop with zig as the C/C++ compiler
+  (`cmake/aarch64-zig.cmake`, target aarch64-linux-gnu, glibc 2.36).
+  zig works on macOS and Linux. The wrappers in `cmake/zig/` map
+  `-mcpu=cortex-a53` to the zig name and use `zig ar` (the macOS ar
+  makes archives that ld.lld cannot link).
+- The cross-built binaries pass all C++ tests on the board.
+
+## D-026: USB demo script runs commands on the board
+- Exception to CLAUDE.md section 7 ("scripts only print commands"):
+  `scripts/demo_board_usb.sh` starts board_daemon on the board over adb.
+- Reason: the board has no network address for the laptop. adb forwards
+  TCP 7070 over the USB cable. The user runs the script; it is not part
+  of any test or of the laptop-only demo.
