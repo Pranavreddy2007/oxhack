@@ -84,7 +84,7 @@ The truth simulator and the forecaster use the same model family.
 - SENSOR: wind_speed f32, wind_dir f32, humidity f32, temp f32,
   flags u32 (dropout, stuck, out-of-range).
 - PERIMETER: observed-mask bitset and burning bitset. The maximum size is
-  fixed.
+  fixed. The burning bitset marks cells that burn or have burnt (D-008).
 - DECISION: crew assignment array, expected loss, CVaR, top-k risk
   clusters, the echoed t_send_ns of the frame that caused the decision,
   and the board stage timings in ns.
@@ -201,7 +201,7 @@ budgets. docs/DECISIONS.md records the final values and the reason.
 | K | ensemble members | 64 |
 | H | forecast horizon (ticks) | 20 |
 | D | ticks between plans | 5 |
-| B | burn duration (ticks) | 3 |
+| B | burn duration (ticks) | 6 (D-007) |
 | M | ticks between perimeter scans | 4 |
 | C | crews | 4 |
 | J | asset clusters | 8 |

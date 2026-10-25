@@ -24,6 +24,7 @@ endif()
 find_package(Threads REQUIRED)
 
 add_subdirectory(engine)
+add_subdirectory(sim)
 
 if(EMBERCAST_BUILD_TESTS)
   enable_testing()
