@@ -15,6 +15,13 @@ Then open http://127.0.0.1:8000/. The script builds the C++ code and the
 Python environment if they are not there. Keys: W wind shift, C cut link,
 R restore link, B show B0, E results. See [docs/DEMO.md](docs/DEMO.md).
 
+Engine on the UNO Q, over the USB cable (no Wi-Fi needed; needs `adb`):
+```
+./scripts/demo_board_usb.sh                  # cpu_opt, 4 threads on the board
+BACKEND=opencl ./scripts/demo_board_usb.sh   # engine on the board GPU
+```
+Board setup (once): see docs/HARDWARE.md section 4, "Cross-build with zig".
+
 ## 2. Build and test
 Requirements: CMake 3.20 or later, a C++20 compiler, Python 3.11 or later,
 and `uv`.
@@ -47,6 +54,8 @@ Results: [results/report.md](results/report.md),
 - [docs/BENCHMARKING.md](docs/BENCHMARKING.md): method, flags, results
 - [docs/DEMO.md](docs/DEMO.md): demo script and fallback plan
 - [docs/DECISIONS.md](docs/DECISIONS.md): design decisions
+- [docs/SUBMISSION.md](docs/SUBMISSION.md): hackathon submission text, media list, video shot list
+- Board results: [results/bench_board.md](results/bench_board.md), [results/bench_live_board.md](results/bench_live_board.md)
 
 ## 5. Status
 | Step | Content | Status |
@@ -57,9 +66,9 @@ Results: [results/report.md](results/report.md),
 | 5 | Offline replay harness and evaluation report | Done |
 | 6 | cpu_opt backend, equivalence test, laptop benchmarks | Done |
 | 7 | Laptop live demo (MVP cut line 1) | Done |
-| 8-10 | UNO Q build, TCP link, board benchmark | Code and commands ready. Board results: waiting for the user. |
-| 11 | MCU sensor station, Bridge sidecar | Code and tests with a fake router. Board: open questions Q7-Q10, flashing needs approval. |
-| 12 | OpenCL backend | Not built: no OpenCL device is verified (DECISIONS D-020) |
+| 8-10 | UNO Q build, TCP link, board benchmark | Done: zig cross-build (D-025), all C++ tests pass on the board, results/bench_board.md, live run over USB |
+| 11 | MCU sensor station, Bridge sidecar | Code and tests with a fake router. Q7, Q9, Q10 answered. Flash: needs the MsgPack library on the board (docs/HARDWARE.md section 6) |
+| 12 | OpenCL backend | Done: bit-identical to cpu_naive on the Mac GPU and the UNO Q Adreno 702 (D-020) |
 | 13 | Full dashboard | Done (side-by-side, controls, results screen) |
 | 14 | Optional integrations | Not done (DECISIONS D-021) |
 | 15 | End-to-end benchmark, rehearsal script | Done on localhost: results/bench_live_localhost.md, scripts/e2e_demo.sh, docs/DEMO.md |

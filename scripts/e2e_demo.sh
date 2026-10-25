@@ -10,7 +10,9 @@ printf '20 wind_shift\n60 cut_link\n90 restore_link\n' > "$TMP/script.txt"
 "$BUILD/apps/embercast_board_daemon" --port 7270 --stale-ms 1000 > "$TMP/daemon.log" 2>&1 &
 D=$!
 sleep 0.5
-timeout 70 "$BUILD/apps/embercast_sim_stream" --board 127.0.0.1:7270 --rate 4 --dash-port 0 \
+# GNU timeout is not on macOS; the run is stopped with kill below anyway.
+TO=""; command -v timeout >/dev/null && TO="timeout 70"
+$TO "$BUILD/apps/embercast_sim_stream" --board 127.0.0.1:7270 --rate 4 --dash-port 0 \
   --script "$TMP/script.txt" --rtt-out "$TMP/rtt.csv" > "$TMP/stream.log" 2>&1 &
 S=$!
 sleep 60

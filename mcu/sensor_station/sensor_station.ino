@@ -51,6 +51,7 @@ static float g_ws = 6.0f, g_wd = 0.0f, g_h = 0.3f, g_t = 25.0f;
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
+  analogReadResolution(10);  // the knob scale below assumes 10 bits (HARDWARE.md Q9)
   Bridge.begin();
   Bridge.provide_safe("ec_status", ec_status);
   Bridge.provide_safe("ec_ping", ec_ping);
@@ -73,7 +74,7 @@ void loop() {
     uint32_t flags = 0;
     float wd = g_wd;
 #if USE_KNOB
-    wd = analogRead(A0) * (6.2831853f / 1023.0f);  // check the ADC resolution on the board
+    wd = analogRead(A0) * (6.2831853f / 1023.0f);  // 10-bit ADC, set in setup()
     flags |= 0x80000000u;                            // bit 31: knob override frame
 #endif
     Bridge.notify("ec_sensor", (int)g_seq, g_ws, wd, g_h, g_t, (int)flags);

@@ -7,10 +7,18 @@ namespace embercast {
 
 std::unique_ptr<IForecastBackend> make_cpu_naive();
 std::unique_ptr<IForecastBackend> make_cpu_opt(int threads);
+#ifdef EMBERCAST_HAVE_OPENCL
+std::unique_ptr<IForecastBackend> make_opencl();
+#endif
 
 std::unique_ptr<IForecastBackend> make_backend(const std::string& name, int threads) {
   if (name == "cpu_naive") return make_cpu_naive();
   if (name == "cpu_opt") return make_cpu_opt(threads);
+#ifdef EMBERCAST_HAVE_OPENCL
+  if (name == "opencl") return make_opencl();
+#else
+  if (name == "opencl") throw std::invalid_argument("backend opencl: build with -DEMBERCAST_OPENCL=ON");
+#endif
   throw std::invalid_argument("unknown backend: " + name);
 }
 

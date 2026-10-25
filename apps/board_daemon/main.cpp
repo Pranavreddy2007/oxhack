@@ -54,7 +54,7 @@ void usage() {
       "embercast_board_daemon [options]\n"
       "  --listen HOST (default 127.0.0.1; use 0.0.0.0 on the board)  --port N (default 7070)\n"
       "  --seed N (default 1000)  --N N  --ticks N  --K N --H N --D N\n"
-      "  --backend cpu_naive|cpu_opt (default cpu_opt)  --threads N (0 = all cores)\n"
+      "  --backend cpu_naive|cpu_opt|opencl (default cpu_opt)  --threads N (0 = all cores)\n"
       "  --stale-ms N (default 1500)\n"
       "  --log PATH        decision log JSONL (written by a separate thread)\n"
       "  --mcu-uds PATH    Unix socket for bridge/mcu_sidecar.py (off by default)\n"

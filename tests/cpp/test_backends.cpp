@@ -97,6 +97,36 @@ TEST_CASE("AC2: full episodes give identical decision logs on both backends") {
   CHECK(a == b);
 }
 
+#ifdef EMBERCAST_HAVE_OPENCL
+TEST_CASE("AC2: opencl gives bit-identical outputs to cpu_naive (skipped without a device)") {
+  try {
+    make_backend("opencl");
+  } catch (const std::exception& e) {
+    MESSAGE("opencl skipped: " << e.what());
+    return;
+  }
+  for (std::uint64_t seed : {101ull, 202ull, 303ull}) {
+    const Run a = run_backend("cpu_naive", 1, seed);
+    const Run b = run_backend("opencl", 1, seed);
+    CHECK(a.states == b.states);
+    CHECK(same_bits(a.p_burn, b.p_burn));
+    CHECK(same_bits(a.loss, b.loss));
+    CHECK(same_bits(a.p_lost, b.p_lost));
+    CHECK(a.area == b.area);
+  }
+  EpisodeOptions o;
+  o.scenario.n = 48;
+  o.scenario.ticks = 40;
+  o.engine.K = 16;
+  o.engine.H = 8;
+  o.engine.backend = "cpu_naive";
+  const auto ra = decision_log(run_episode(41, "ensemble", o));
+  o.engine.backend = "opencl";
+  const auto rb = decision_log(run_episode(41, "ensemble", o));
+  CHECK(ra == rb);
+}
+#endif
+
 TEST_CASE("thread pool runs every index exactly once, many times") {
   ThreadPool pool(4);
   std::vector<int> hits(1000, 0);

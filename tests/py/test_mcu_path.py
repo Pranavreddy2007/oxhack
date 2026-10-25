@@ -18,6 +18,8 @@ import time
 from pathlib import Path
 
 import pytest
+import shutil
+import tempfile
 
 from bridge.msgpack_lite import Unpacker, packb
 
@@ -100,11 +102,19 @@ def free_port():
     return p
 
 
-def test_mcu_path_end_to_end(tmp_path):
-    router = FakeRouter(str(tmp_path / "router.sock"))
+@pytest.fixture
+def sock_dir():
+    # macOS limits AF_UNIX paths to 104 bytes; pytest tmp_path is longer.
+    d = tempfile.mkdtemp(prefix="ec", dir="/tmp")
+    yield Path(d)
+    shutil.rmtree(d, ignore_errors=True)
+
+
+def test_mcu_path_end_to_end(tmp_path, sock_dir):
+    router = FakeRouter(str(sock_dir / "router.sock"))
     router.start()
     port = free_port()
-    mcu_sock = str(tmp_path / "mcu.sock")
+    mcu_sock = str(sock_dir / "mcu.sock")
     daemon = subprocess.Popen([str(DAEMON), "--port", str(port), "--N", "64", "--ticks", "400", "--threads", "2",
                                "--mcu-uds", mcu_sock, "--sensor-source", "mcu", "--mcu-timeout-ms", "500"],
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)

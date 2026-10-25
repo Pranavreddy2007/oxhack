@@ -12,8 +12,10 @@ Open http://127.0.0.1:8000/ in a browser.
 Variants:
 - `ENGINE=inprocess ./scripts/demo_laptop.sh`: no daemon. The engine runs
   inside sim_stream. Use this if a port is busy.
+- `./scripts/demo_board_usb.sh`: the engine runs on the UNO Q over the USB
+  cable (adb port forward, D-026). `BACKEND=opencl` uses the board GPU.
 - `BOARD=<BOARD_IP>:7070 ./scripts/demo_laptop.sh`: the engine runs on the
-  UNO Q. First start the daemon on the board yourself (see
+  UNO Q over Wi-Fi. First start the daemon on the board yourself (see
   `scripts/print_board_build.sh`, Step 9/10b).
 - `RATE=8` makes the ticks faster. `SEED=1003` selects another TUNE scenario.
 
@@ -41,6 +43,7 @@ evaluation (results/report.md), not from the live run.
 | Problem | Action |
 |---|---|
 | Board not reachable | Run the laptop-only command. The same engine runs on the laptop. |
+| `adb devices` shows nothing | Use another USB-C cable or port. Then the laptop-only command. |
 | Port 7070 busy | `ENGINE=inprocess ./scripts/demo_laptop.sh` |
 | Browser problem | The sim_stream console prints the episode losses. results/report.md has the TEST results. |
 | MCU not ready | Use the W key in place of the knob. |

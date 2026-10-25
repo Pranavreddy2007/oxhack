@@ -57,6 +57,7 @@ Board: `bash scripts/print_board_build.sh` prints the commands (Step 10a).
 | Build | Flags |
 |---|---|
 | Release (default) | `-std=c++20 -O3 -DNDEBUG -Wall -Wextra -Wpedantic` |
+| Board (zig cross-build, D-025) | Release flags + `-mcpu=cortex-a53` (zig: cortex_a53), `-target aarch64-linux-gnu.2.36` |
 | Board, optional | add `-mcpu=cortex-a53` (CMake option `EMBERCAST_NATIVE_ARCH`), only after the board compiler accepts it |
 
 Laptop compiler in the development container: g++ 13.3.0, CMake 3.28.3.
