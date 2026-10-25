@@ -103,6 +103,7 @@ C++20, CMake, OpenCL, Python, WebSockets, zig (cross-compiler), Arduino UNO Q
 ## Media (in `media/` and `results/`)
 | File | Use |
 |---|---|
+| media/embercast_demo.mp4 | Demo video (62 s) |
 | media/dashboard_live.png | Cover image: EmberCast vs deterministic, live |
 | media/dashboard_wind_shift.png | After a wind shift: losses diverge |
 | media/dashboard_results.png | Held-out results screen with 95% CIs |
@@ -111,7 +112,13 @@ C++20, CMake, OpenCL, Python, WebSockets, zig (cross-compiler), Arduino UNO Q
 | results/paired_diff.png | Paired loss differences with 95% CIs |
 | results/reliability.png | Calibration (reliability) plot |
 
-## Video (2 minutes): shot list
+## Video
+`media/embercast_demo.mp4` (62 s, 1600x1000, captions, no sound) is a
+recording of the live dashboard with the engine on the UNO Q over USB
+(seed 1000, 3 Hz): wind shift, cut link, restore link, TEST results.
+Upload it to YouTube (unlisted is fine) and paste the link in the form.
+
+## Longer video with narration (optional, 2 minutes): shot list
 Follow docs/DEMO.md section 2. Record the screen with the macOS screenshot
 tool (Cmd-Shift-5, "Record Entire Screen").
 1. 0:00 Problem in one sentence; show the safety notice.
