@@ -74,7 +74,9 @@ def main(argv=None):
     data = load(args.raw)
     metas = []
     for p in args.raw:
-        mp = Path(p.replace("_raw.csv", "_meta.json"))
+        if not p.endswith("_raw.csv"):
+            continue
+        mp = Path(p[: -len("_raw.csv")] + "_meta.json")
         if mp.exists():
             metas.append(json.loads(mp.read_text()))
     text = f"# {args.title}\n\nMade by `laptop/tools/bench_report.py` from: " + ", ".join(

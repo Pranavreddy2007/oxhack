@@ -62,4 +62,4 @@ Results: [results/report.md](results/report.md),
 | 12 | OpenCL backend | Not built: no OpenCL device is verified (DECISIONS D-020) |
 | 13 | Full dashboard | Done (side-by-side, controls, results screen) |
 | 14 | Optional integrations | Not done (DECISIONS D-021) |
-| 15 | End-to-end benchmark, rehearsal script | scripts/e2e_demo.sh, docs/DEMO.md |
+| 15 | End-to-end benchmark, rehearsal script | Done on localhost: results/bench_live_localhost.md, scripts/e2e_demo.sh, docs/DEMO.md |

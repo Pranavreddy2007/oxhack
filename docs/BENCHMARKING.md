@@ -71,11 +71,24 @@ Laptop compiler in the development container: g++ 13.3.0, CMake 3.28.3.
 |---|---|---|
 | Laptop engine stages | `results/raw/bench/*_raw.csv`, `*_meta.json` | [results/bench_laptop.md](../results/bench_laptop.md) |
 | Offline evaluation stage times | `results/raw/test/main_latency.csv` | not tabulated (parallel episodes share cores) |
-| Live round trip | `results/raw/live/rtt.csv` | `results/bench_live.md` (after a live run) |
+| Live round trip, localhost (Step 15) | `results/raw/live/localhost_rtt.csv`, `localhost_daemon.csv` | [results/bench_live_localhost.md](../results/bench_live_localhost.md) |
+| Live round trip, laptop to board | `results/raw/live/rtt.csv` | `results/bench_live.md` (after a live run with the board) |
 | Board engine stages | `results/raw/board/*_raw.csv` | `results/bench_board.md` (after the user runs Step 10a) |
 
 Note: the laptop numbers come from a shared cloud development container
 with 4 hardware threads, not from the user laptop and not from the UNO Q.
+
+Localhost live run command (Step 15):
+```
+build/apps/embercast_board_daemon --port 7370 --threads 4 --bench-out results/raw/live/localhost_daemon.csv &
+build/apps/embercast_sim_stream --board 127.0.0.1:7370 --fast --episodes 20 --dash-port 0 --threads 1 \
+  --rtt-out results/raw/live/localhost_rtt.csv
+kill -INT %1
+.venv/bin/python -m laptop.tools.bench_report --raw results/raw/live/localhost_rtt.csv \
+  results/raw/live/localhost_daemon.csv --out results/bench_live_localhost.md
+```
+On localhost the "transport" time is the loopback TCP path plus frame
+encode/decode and the receiver thread hand-off. It is not a network number.
 
 ## 7. Model and decision metrics
 See [results/report.md](../results/report.md) (made by
