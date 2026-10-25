@@ -1,0 +1,8 @@
+#!/bin/sh
+# zig spells CPU names with underscores: map -mcpu=cortex-a53 to cortex_a53.
+for a in "$@"; do
+  shift
+  case "$a" in -mcpu=*) a=$(echo "$a" | tr - _ | sed 's/^_mcpu=/-mcpu=/');; esac
+  set -- "$@" "$a"
+done
+exec zig cc -target aarch64-linux-gnu.2.36 "$@"
