@@ -86,6 +86,11 @@ class Engine {
   const IForecastBackend& backend() const { return *backend_; }
   // Force STALE (for example on a transport disconnect).
   void set_link_down(bool down) { link_down_ = down; }
+  // Call when the sensor source changes (MCU <-> laptop): the seq numbers restart.
+  void reset_sensor_seq() {
+    last_sensor_seq_ = -1;
+    same_count_ = 0;
+  }
 
  private:
   void ingest_sensors(std::uint32_t t);

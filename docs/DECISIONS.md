@@ -167,3 +167,23 @@ rule also has an entry.
 ## D-021: Optional integrations (Step 14) not built
 - Reason: time box. They are optional and off by default. The core loop
   has no cloud dependency.
+
+## D-022: MCU role in the live demo (Step 11)
+- Decision: the truth simulator runs on the laptop. Thus the engine gets
+  its weather frames from the laptop sensor emulation by default
+  (`--sensor-source laptop`). The MCU frames then give (1) the knob wind
+  shift (flag bit 31; the daemon relays the frame to the laptop, and the
+  laptop shifts the true wind) and (2) MCU liveness (SENSOR_LOST, state
+  DEGRADED). With `--sensor-source mcu`, the engine uses the MCU frames and
+  the laptop frames take over when the MCU is silent.
+- Reason: MCU weather values that are not linked to the true weather would
+  make the forecast wrong for reasons that are not in the model.
+- The MCU display uses LED_BUILTIN only, because the LED matrix API is not
+  verified (HARDWARE.md Q5).
+
+## D-023: Own MessagePack-RPC client in the sidecar
+- Decision: `bridge/msgpack_lite.py` and a minimal RPC client in
+  `bridge/mcu_sidecar.py`.
+- Reason: the Python client package was not found, and installing
+  packages on the board needs approval. The router method for
+  registration is a command-line option because it is not verified (Q7).

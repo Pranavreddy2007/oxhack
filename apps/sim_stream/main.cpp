@@ -172,6 +172,8 @@ int main(int argc, char** argv) {
   auto fm = std::make_unique<ForecastMsg>();
   double last_rtt_ms = -1, last_board_ms = -1, last_rollout_ms = -1;
   float ess = 0;
+  float knob = 0.f;
+  bool have_knob = false;
 
   auto start_episode = [&]() {
     sc = make_scenario(seed, so);
@@ -365,6 +367,20 @@ int main(int argc, char** argv) {
               continue;
             }
             const auto type = FrameType(rf->h.type);
+            if (type == FrameType::Sensor) {  // MCU knob frame relayed by the daemon
+              SensorMsg km;
+              if (decode(rf->h, rf->payload.data(), km) && (km.flags & 0x80000000u)) {
+                if (!have_knob) {
+                  knob = km.wind_dir;
+                  have_knob = true;
+                } else if (std::abs(km.wind_dir - knob) > 0.35f) {
+                  for (auto& LL : lanes) LL.truth->add_wind_shift(km.wind_dir - knob);
+                  std::printf("[sim_stream] tick %u knob wind shift %.2f rad\n", t, double(km.wind_dir - knob));
+                  knob = km.wind_dir;
+                }
+              }
+              continue;
+            }
             if (type == FrameType::Decision) {
               DecisionMsg dm;
               if (decode(rf->h, rf->payload.data(), dm) && dm.tick == t) {

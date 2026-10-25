@@ -57,13 +57,17 @@ void usage() {
       "  --backend cpu_naive|cpu_opt (default cpu_opt)  --threads N (0 = all cores)\n"
       "  --stale-ms N (default 1500)\n"
       "  --log PATH        decision log JSONL (written by a separate thread)\n"
+      "  --mcu-uds PATH    Unix socket for bridge/mcu_sidecar.py (off by default)\n"
+      "  --sensor-source laptop|mcu  engine weather input (default laptop)\n"
+      "  --mcu-timeout-ms N  MCU silence that gives SENSOR_LOST (default 2000)\n"
       "  --bench-out PATH  raw stage latency CSV, written at exit");
 }
 
 }  // namespace
 
 int main(int argc, char** argv) {
-  std::string host = "127.0.0.1", log_path, bench_out;
+  std::string host = "127.0.0.1", log_path, bench_out, mcu_uds, sensor_source = "laptop";
+  int mcu_timeout_ms = 2000;
   int port = 7070, stale_ms = 1500;
   ScenarioOptions so;
   std::uint64_t seed = 1000;
@@ -89,6 +93,9 @@ int main(int argc, char** argv) {
     else if (a == "--stale-ms") stale_ms = std::stoi(next());
     else if (a == "--log") log_path = next();
     else if (a == "--bench-out") bench_out = next();
+    else if (a == "--mcu-uds") mcu_uds = next();
+    else if (a == "--sensor-source") sensor_source = next();
+    else if (a == "--mcu-timeout-ms") mcu_timeout_ms = std::stoi(next());
     else { usage(); return a == "--help" ? 0 : 2; }
   }
   std::signal(SIGINT, on_signal);
@@ -102,6 +109,18 @@ int main(int argc, char** argv) {
   std::printf("[daemon] %s  listening on %s:%d  backend %s  K=%d H=%d D=%d\n", safety_notice(),
               host.c_str(), port, cfg.backend.c_str(), cfg.K, cfg.H, cfg.D);
   std::fflush(stdout);
+
+  const int mcu_lfd = mcu_uds.empty() ? -1 : uds_listen(mcu_uds);
+  if (!mcu_uds.empty() && mcu_lfd < 0) {
+    std::fprintf(stderr, "[daemon] cannot listen on %s\n", mcu_uds.c_str());
+    return 1;
+  }
+  if (mcu_lfd >= 0) std::printf("[daemon] MCU sidecar socket %s, sensor source %s\n", mcu_uds.c_str(), sensor_source.c_str());
+  std::unique_ptr<StreamTransport> mcu;
+  std::uint64_t last_mcu = 0;
+  bool mcu_lost = mcu_lfd >= 0;  // lost until the first MCU frame
+  bool using_mcu = false;
+  std::uint32_t mcu_seq = 0;
 
   LogWriter log(log_path);
   ConsoleStatus console;
@@ -144,6 +163,47 @@ int main(int argc, char** argv) {
       }
     }
     bool any = false;
+    if (mcu_lfd >= 0) {
+      if (!mcu || !mcu->connected()) {
+        const int fd = accept_timeout(mcu_lfd, 0);
+        if (fd >= 0) {
+          mcu = std::make_unique<StreamTransport>(fd);
+          std::printf("[daemon] MCU sidecar connected\n");
+        }
+      }
+      while (mcu && mcu->pop(*rf)) {
+        any = true;
+        if (FrameType(rf->h.type) != FrameType::Sensor) continue;
+        SensorMsg m;
+        if (!decode(rf->h, rf->payload.data(), m)) continue;
+        last_mcu = now_ns();
+        if (mcu_lost) {
+          mcu_lost = false;
+          std::printf("[daemon] MCU sensor frames OK\n");
+        }
+        if (m.flags & 0x80000000u) {  // knob frame: relay to the laptop
+          if (tr && tr->connected()) tr->send(out.data(), encode(m, out.data(), out.size()));
+          m.flags &= ~0x80000000u;
+        }
+        if (sensor_source == "mcu") {
+          if (!using_mcu) {
+            eng->reset_sensor_seq();
+            using_mcu = true;
+          }
+          m.tick = std::uint32_t(std::max<std::int64_t>(0, last_tick));
+          eng->on_sensor(m);
+        }
+      }
+      if (!mcu_lost && now_ns() - last_mcu > std::uint64_t(mcu_timeout_ms) * 1000000ull) {
+        mcu_lost = true;
+        std::printf("[daemon] SENSOR_LOST: no MCU frame for %d ms%s\n", mcu_timeout_ms,
+                    sensor_source == "mcu" ? "; laptop sensor emulation takes over" : "");
+      }
+      if (mcu_lost && using_mcu) {
+        eng->reset_sensor_seq();
+        using_mcu = false;
+      }
+    }
     while (tr && tr->pop(*rf)) {
       any = true;
       last_rx = now_ns();
@@ -151,7 +211,7 @@ int main(int argc, char** argv) {
       const auto type = FrameType(rf->h.type);
       if (type == FrameType::Sensor) {
         SensorMsg m;
-        if (decode(rf->h, rf->payload.data(), m)) eng->on_sensor(m);
+        if (decode(rf->h, rf->payload.data(), m) && !using_mcu) eng->on_sensor(m);
       } else if (type == FrameType::Perimeter) {
         if (decode(rf->h, rf->payload.data(), *pm)) eng->on_perimeter(*pm);
       } else if (type == FrameType::Heartbeat) {
@@ -210,7 +270,20 @@ int main(int argc, char** argv) {
         rep.tick = hb.tick;
         rep.t_send_ns = now_ns();
         rep.state = std::uint32_t(eng->health());
+        if (rep.state == std::uint32_t(HealthState::Ok) && mcu_lfd >= 0 && mcu_lost)
+          rep.state = std::uint32_t(HealthState::Degraded);
         tr->send(out.data(), encode(rep, out.data(), out.size()));
+        if (mcu && mcu->connected()) {  // status for the MCU display
+          rep.seq = mcu_seq++;
+          mcu->send(out.data(), encode(rep, out.data(), out.size()));
+          if (decided) {
+            DecisionMsg dm;
+            dm.tick = hb.tick;
+            dm.plan = plan;
+            dm.state = rep.state;
+            mcu->send(out.data(), encode(dm, out.data(), out.size()));
+          }
+        }
         console.status(eng->health(), eng->plan().top_risk[0]);
       }
     }
@@ -240,5 +313,6 @@ int main(int argc, char** argv) {
     std::printf("[daemon] wrote %s\n", bench_out.c_str());
   }
   close_fd(lfd);
+  close_fd(mcu_lfd);
   return 0;
 }

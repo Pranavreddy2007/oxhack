@@ -58,7 +58,7 @@ Results: [results/report.md](results/report.md),
 | 6 | cpu_opt backend, equivalence test, laptop benchmarks | Done |
 | 7 | Laptop live demo (MVP cut line 1) | Done |
 | 8-10 | UNO Q build, TCP link, board benchmark | Code and commands ready. Board results: waiting for the user. |
-| 11 | MCU sensor station, Bridge sidecar | See README section 6 |
+| 11 | MCU sensor station, Bridge sidecar | Code and tests with a fake router. Board: open questions Q7-Q10, flashing needs approval. |
 | 12 | OpenCL backend | Not built: no OpenCL device is verified (DECISIONS D-020) |
 | 13 | Full dashboard | Done (side-by-side, controls, results screen) |
 | 14 | Optional integrations | Not done (DECISIONS D-021) |
