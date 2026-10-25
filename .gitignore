@@ -1,0 +1,10 @@
+build/
+build-*/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.hypothesis/
+datasets/
+results/raw/
+.env

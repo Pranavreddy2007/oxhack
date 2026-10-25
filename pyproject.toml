@@ -1,0 +1,9 @@
+[project]
+name = "embercast-laptop"
+version = "0.1.0"
+description = "EmberCast laptop tools and dashboard. Simulation only. Not for operational use."
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests/py"]
+pythonpath = ["."]

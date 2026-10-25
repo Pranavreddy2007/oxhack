@@ -1,0 +1,7 @@
+add_executable(embercast_tests
+  test_main.cpp
+  test_smoke.cpp
+)
+target_include_directories(embercast_tests PRIVATE ${PROJECT_SOURCE_DIR}/third_party/doctest)
+target_link_libraries(embercast_tests PRIVATE embercast_engine)
+add_test(NAME embercast_tests COMMAND embercast_tests)
