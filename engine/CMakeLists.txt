@@ -6,6 +6,7 @@ add_library(embercast_engine
   src/filter.cpp
   src/policy.cpp
   src/engine.cpp
+  src/transport.cpp
   backends/cpu_naive/cpu_naive.cpp
   backends/cpu_opt/cpu_opt.cpp
 )

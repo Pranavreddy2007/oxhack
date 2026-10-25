@@ -5,6 +5,7 @@ add_executable(embercast_tests
   test_frame.cpp
   test_truth.cpp
   test_filter_policy.cpp
+  test_backends.cpp
 )
 target_include_directories(embercast_tests PRIVATE ${PROJECT_SOURCE_DIR}/third_party/doctest)
 target_link_libraries(embercast_tests PRIVATE embercast_sim embercast_engine)

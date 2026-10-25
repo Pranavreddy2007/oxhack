@@ -115,3 +115,55 @@ rule also has an entry.
   forecast tick and within 12 cells (Chebyshev) of the true footprint.
   Far cells have P = 0 and outcome 0. They would make the scores look
   better than they are.
+
+## D-015: Parameters chosen on TUNE (Step 5)
+- Decision: beta = 0.05, lambda = 0.5, alpha = 0.95, switch_cost = 4,
+  K = 64, H = 20, D = 5, N = 96.
+- Method: sweep of beta {0.02, 0.05, 0.1} and lambda {0, 0.5, 1.5} x
+  switch_cost {1, 4, 10} on the 40 TUNE seeds only
+  ([results/tune_summary.md](../results/tune_summary.md)). The differences
+  between most settings were small (within the seed noise). The defaults
+  were kept. TEST seeds were not used to choose any value.
+- The TEST ablations later show that lambda = 0 gives a similar mean loss
+  and CVaR95 (results/report.md). The value was not changed after TEST.
+- K = 64 and H = 20: on the laptop, one cpu_opt decision at K = 64 takes
+  well under the 250 ms tick of the 4 Hz demo (results/bench_laptop.md).
+  The board budget is not measured yet. Step 10a has a K sweep for it.
+
+## D-016: FORECAST frame type
+- Decision: frame type 5 carries the P(burn) map (one byte per cell,
+  round(255 p)) and the ESS from the engine to the laptop.
+- Reason: C12 needs the probability heatmap from the board. PRD.md
+  Section 8 lists only four types. kMaxPayload is 16 + kMaxCells bytes.
+
+## D-017: Stress scenarios and the regime shift
+- Stress "none" (the main run) has a regime shift with probability 0.5.
+  Stress "regime" always has one. The other stress types (dropout30,
+  late_scans, stuck) have no regime shift. Thus their losses are not
+  directly comparable with the main run. Each stress row compares the
+  policies on the same scenarios.
+
+## D-018: Thread pool barrier (relaxed rule: spin wait)
+- The caller spins on an atomic counter until all tasks are done. Workers
+  sleep on `std::atomic::wait` between calls. No mutex is used.
+- Cost: the caller uses one core while it waits. The barrier time is part
+  of the measured decision_rollout and tick_filter times.
+
+## D-019: Live protocol
+- sim_stream sends SENSOR and PERIMETER frames for tick t, then a
+  HEARTBEAT with t_sim_tick = t. The daemon advances the engine on the
+  HEARTBEAT. If ticks were missed (link loss), the daemon advances through
+  each missed tick, so the members stay in step with the truth.
+- The daemon and sim_stream make the same scenario from the seed. No
+  terrain data goes over the link.
+- With no lost frames, the remote engine gives the same plans as the
+  in-process engine (tests/py/test_live_e2e.py).
+
+## D-020: OpenCL backend (Step 12) not built
+- No OpenCL device is verified on the board (docs/HARDWARE.md Q2). The
+  development container has no OpenCL headers or device. The brief says
+  to build it only if clinfo shows a device. The CMake option stays OFF.
+
+## D-021: Optional integrations (Step 14) not built
+- Reason: time box. They are optional and off by default. The core loop
+  has no cloud dependency.

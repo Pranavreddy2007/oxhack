@@ -89,6 +89,7 @@ The truth simulator and the forecaster use the same model family.
   clusters, the echoed t_send_ns of the frame that caused the decision,
   and the board stage timings in ns.
 - HEARTBEAT: seq and state (OK, STALE, DEGRADED, FAULT).
+- FORECAST (extension, D-016): P(burn) map, one byte per cell, and ESS.
 
 ### 8.3 Rules
 - The maximum payload size is fixed at compile time.
@@ -192,7 +193,7 @@ simulator. Thus the approximation cannot make the reported gain larger.
 - AC6: One command starts the laptop-only demo.
 - AC7: Each failure mode in Section 13 has a test.
 
-## 17. Provisional values (measure before you fix them)
+## 17. Parameter values (D-006, D-015)
 These values are starting points only. Steps 6 and 10 measure the
 budgets. docs/DECISIONS.md records the final values and the reason.
 | Symbol | Meaning | Start value |
@@ -206,4 +207,6 @@ budgets. docs/DECISIONS.md records the final values and the reason.
 | C | crews | 4 |
 | J | asset clusters | 8 |
 | alpha | CVaR level | 0.95 |
-| lambda | risk weight | 0.5 (choose on TUNE only) |
+| lambda | risk weight | 0.5 (chosen on TUNE only) |
+
+The board budget for K and H is not measured yet (Step 10a).

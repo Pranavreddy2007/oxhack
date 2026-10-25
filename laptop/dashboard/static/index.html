@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EmberCast</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --line: #2a2f3a; --text: #e6e8ec; --muted: #9aa3b2;
+    --ember: #f97316; --b1: #60a5fa; --b0: #a78bfa; --ok: #22c55e; --stale: #f59e0b; --fault: #ef4444;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, sans-serif; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+  h1 { font-size: 18px; margin: 0; letter-spacing: .02em; }
+  .safety { background: #3b1d0a; color: #fdba74; border: 1px solid #7c2d12; padding: 4px 10px; border-radius: 6px; font-weight: 600; }
+  .muted { color: var(--muted); }
+  main { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 12px; padding: 12px 16px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px; min-width: 0; }
+  .panel h2 { font-size: 14px; margin: 0 0 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  canvas.map { width: 100%; height: auto; aspect-ratio: 1; image-rendering: pixelated; border-radius: 4px; display: block; }
+  .badge { font-size: 12px; padding: 2px 8px; border-radius: 999px; font-weight: 700; }
+  .OK { background: #14532d; color: #86efac; } .STALE { background: #78350f; color: #fde68a; }
+  .DEGRADED { background: #78350f; color: #fde68a; } .FAULT { background: #7f1d1d; color: #fecaca; }
+  .big { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  td, th { padding: 3px 6px; border-bottom: 1px solid var(--line); text-align: right; }
+  td:first-child, th:first-child { text-align: left; }
+  button { background: #222733; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; cursor: pointer; font: inherit; }
+  button:hover { border-color: var(--ember); }
+  kbd { font-size: 11px; color: var(--muted); }
+  #results { position: fixed; inset: 0; background: rgba(10,12,16,.96); display: none; overflow: auto; padding: 24px; z-index: 5; }
+  #results img { max-width: 100%; background: #fff; border-radius: 6px; }
+  .legend span { display: inline-block; width: 10px; height: 10px; margin: 0 4px 0 10px; border-radius: 2px; vertical-align: middle; }
+</style>
+</head>
+<body>
+<header>
+  <h1>EmberCast</h1>
+  <span class="safety">Simulation only. Not for operational use.</span>
+  <span class="muted" id="meta">waiting for sim_stream…</span>
+  <span style="flex:1"></span>
+  <button id="bWind">Wind shift <kbd>W</kbd></button>
+  <button id="bCut">Cut link <kbd>C</kbd></button>
+  <button id="bRestore">Restore link <kbd>R</kbd></button>
+  <button id="bB0">Show B0 <kbd>B</kbd></button>
+  <button id="bRes">Results <kbd>E</kbd></button>
+</header>
+<main>
+  <section class="panel">
+    <h2><span style="color:var(--ember)">EmberCast</span><span id="stE" class="badge OK">OK</span></h2>
+    <canvas class="map" id="cE" width="480" height="480"></canvas>
+  </section>
+  <section class="panel">
+    <h2><span id="titleR" style="color:var(--b1)">B1 deterministic</span><span id="stR" class="badge OK">OK</span></h2>
+    <canvas class="map" id="cR" width="480" height="480"></canvas>
+  </section>
+  <section class="panel">
+    <h2>Realised loss (truth)</h2>
+    <div class="row">
+      <div><div class="muted">EmberCast</div><div class="big" id="lE" style="color:var(--ember)">0</div></div>
+      <div><div class="muted">B1</div><div class="big" id="lB1" style="color:var(--b1)">0</div></div>
+      <div><div class="muted">B0</div><div class="big" id="lB0" style="color:var(--b0)">0</div></div>
+    </div>
+    <p class="muted" id="tickInfo"></p>
+    <div class="legend muted">
+      <span style="background:#f97316"></span>P(burn)
+      <span style="background:#facc15"></span>burning
+      <span style="background:#3f3f46"></span>burnt
+      <span style="background:#38bdf8"></span>asset
+      <span style="background:#fff;border-radius:50%"></span>crew
+    </div>
+    <h2 style="margin-top:12px">Asset risk (EmberCast)</h2>
+    <table id="risk"><thead><tr><th>Cluster</th><th>Value</th><th>P(burn) max</th><th>Crews</th></tr></thead><tbody></tbody></table>
+  </section>
+  <section class="panel">
+    <h2>Latency <span class="muted" id="latSrc"></span></h2>
+    <canvas id="hist" width="460" height="160" style="width:100%;height:auto"></canvas>
+    <table>
+      <tr><th>Quantity</th><th>last ms</th><th>p50 ms</th><th>p99 ms</th><th>n</th></tr>
+      <tr><td>Round trip (laptop clock)</td><td id="rL"></td><td id="r50"></td><td id="r99"></td><td id="rN"></td></tr>
+      <tr><td>Engine decision (engine clock)</td><td id="eL"></td><td id="e50"></td><td id="e99"></td><td id="eN"></td></tr>
+      <tr><td>Dashboard render (browser)</td><td id="dL"></td><td id="d50"></td><td id="d99"></td><td id="dN"></td></tr>
+    </table>
+    <p class="muted">Display only. Reported numbers come from the CSV files and scripts (docs/BENCHMARKING.md).</p>
+  </section>
+</main>
+<div id="results">
+  <button id="bClose" style="float:right">Close <kbd>Esc</kbd></button>
+  <h1>Evaluation on held-out TEST seeds</h1>
+  <p class="safety" style="display:inline-block">Simulation only. Not for operational use.</p>
+  <div id="resBody" class="muted">Loading results/summary.json…</div>
+  <h2>Paired loss difference (95% CI)</h2>
+  <img src="/results/paired_diff.png" alt="Paired loss difference chart">
+  <h2>Reliability of P(burn)</h2>
+  <img src="/results/reliability.png" alt="Reliability plot" style="max-width:420px">
+</div>
+<script>
+"use strict";
+const S = 5;
+let init = null, showB0 = false, last = null;
+const samples = { rtt: [], eng: [], draw: [] };
+const ws = new WebSocket(`ws://${location.hostname}:8001/`);
+ws.onmessage = (ev) => {
+  const m = JSON.parse(ev.data);
+  if (m.type === "init") { init = m; document.getElementById("meta").textContent =
+      `seed ${m.seed} · ${m.n}×${m.n} · ${m.crews} crews · ${m.remote ? "engine on board_daemon (TCP)" : "engine in-process"}`; }
+  else if (m.type === "tick" && init) { last = m; draw(m); }
+  else if (m.type === "stream_down") document.getElementById("meta").textContent = "sim_stream not connected";
+};
+const send = (c) => ws.readyState === 1 && ws.send(c);
+document.getElementById("bWind").onclick = () => send("wind_shift");
+document.getElementById("bCut").onclick = () => send("cut_link");
+document.getElementById("bRestore").onclick = () => send("restore_link");
+document.getElementById("bB0").onclick = toggleB0;
+document.getElementById("bRes").onclick = showResults;
+document.getElementById("bClose").onclick = () => (document.getElementById("results").style.display = "none");
+addEventListener("keydown", (e) => {
+  const k = e.key.toLowerCase();
+  if (k === "w") send("wind_shift"); else if (k === "c") send("cut_link");
+  else if (k === "r") send("restore_link"); else if (k === "b") toggleB0();
+  else if (k === "e") showResults(); else if (k === "escape") document.getElementById("results").style.display = "none";
+});
+function toggleB0() {
+  showB0 = !showB0;
+  const t = document.getElementById("titleR");
+  t.textContent = showB0 ? "B0 front-nearest" : "B1 deterministic";
+  t.style.color = showB0 ? "var(--b0)" : "var(--b1)";
+  document.getElementById("bB0").firstChild.textContent = showB0 ? "Show B1 " : "Show B0 ";
+  if (last) draw(last);
+}
+const off = document.createElement("canvas");
+function drawLane(canvas, lane, color) {
+  const n = init.n;
+  off.width = n; off.height = n;
+  const octx = off.getContext("2d");
+  const img = octx.createImageData(n, n);
+  const d = img.data, fire = lane.fire, p = lane.p;
+  for (let c = 0; c < n * n; c++) {
+    const f = init.fuel.charCodeAt(c) - 48;
+    let r = 20 + 10 * f, g = 32 + 22 * f, b = 24 + 6 * f;
+    if (f === 0) { r = 70; g = 70; b = 76; }
+    if (init.cluster[c] !== ".") { r = 30; g = 110; b = 150; }
+    if (p) {
+      const pv = parseInt(p.substr(2 * c, 2), 16) / 255;
+      r = r + (249 - r) * pv; g = g + (115 - g) * pv; b = b + (22 - b) * pv;
+    }
+    const s = fire.charCodeAt(c);
+    if (s === 49) { r = 250; g = 204; b = 21; } else if (s === 50) { r = 63; g = 63; b = 70; }
+    const i = 4 * c; d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = 255;
+  }
+  octx.putImageData(img, 0, 0);
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(off, 0, 0, n * S, n * S);
+  // Crews at cluster centres.
+  const counts = {};
+  lane.crews.forEach((j) => { if (j < init.clusters.length) counts[j] = (counts[j] || 0) + 1; });
+  ctx.font = "bold 12px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (const [j, k] of Object.entries(counts)) {
+    const cl = init.clusters[j];
+    const x = (cl.x + 0.5) * S, y = (cl.y + 0.5) * S;
+    ctx.beginPath(); ctx.arc(x, y, 9, 0, 2 * Math.PI);
+    ctx.fillStyle = "#fff"; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = color; ctx.stroke();
+    ctx.fillStyle = "#111"; ctx.fillText(String(k), x, y + 1);
+  }
+  init.clusters.forEach((cl, j) => {
+    ctx.fillStyle = "#e0f2fe"; ctx.font = "11px system-ui";
+    ctx.fillText(String.fromCharCode(65 + j), (cl.x + 0.5) * S, (cl.y + 0.5) * S - 16);
+  });
+  // Wind arrow (true wind, display only).
+  const cx = n * S - 34, cy = 34, L = 22, a = last.wind_dir;
+  ctx.strokeStyle = "#e6e8ec"; ctx.lineWidth = 3; ctx.beginPath();
+  ctx.moveTo(cx - L * Math.cos(a), cy - L * Math.sin(a)); ctx.lineTo(cx + L * Math.cos(a), cy + L * Math.sin(a)); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx + L * Math.cos(a), cy + L * Math.sin(a), 4, 0, 2 * Math.PI); ctx.fillStyle = "#e6e8ec"; ctx.fill();
+  if (lane.state !== "OK") {
+    ctx.fillStyle = "rgba(120,53,15,.85)"; ctx.fillRect(0, 0, 150, 26);
+    ctx.fillStyle = "#fde68a"; ctx.font = "bold 14px system-ui"; ctx.textAlign = "left";
+    ctx.fillText(lane.state + " · last plan kept", 8, 14);
+  }
+}
+const pct = (a, q) => { if (!a.length) return NaN; const s = [...a].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.max(0, Math.ceil(q * s.length) - 1))]; };
+const f2 = (x) => (x == null || isNaN(x) || x < 0 ? "–" : x.toFixed(2));
+function setRow(prefix, arr, lastV) {
+  document.getElementById(prefix + "L").textContent = f2(lastV);
+  document.getElementById(prefix + "50").textContent = f2(pct(arr, 0.5));
+  document.getElementById(prefix + "99").textContent = f2(pct(arr, 0.99));
+  document.getElementById(prefix + "N").textContent = arr.length;
+}
+let lastSeenRtt = -1, lastSeenEng = -1, lastTick = -1;
+function draw(m) {
+  const t0 = performance.now();
+  const e = m.lanes.ensemble, r = showB0 ? m.lanes.b0 : m.lanes.b1;
+  drawLane(document.getElementById("cE"), e, "#f97316");
+  drawLane(document.getElementById("cR"), r, showB0 ? "#a78bfa" : "#60a5fa");
+  for (const [id, st] of [["stE", e.state], ["stR", r.state]]) {
+    const el = document.getElementById(id); el.textContent = st; el.className = "badge " + st;
+  }
+  document.getElementById("lE").textContent = e.loss.toFixed(1);
+  document.getElementById("lB1").textContent = m.lanes.b1.loss.toFixed(1);
+  document.getElementById("lB0").textContent = m.lanes.b0.loss.toFixed(1);
+  document.getElementById("tickInfo").textContent =
+    `tick ${m.tick} / ${init.ticks} · plan E[loss] ${e.eloss.toFixed(1)} · CVaR ${e.cvar.toFixed(1)} · ESS ${m.ess.toFixed(1)}` +
+    (m.link_cut ? " · LINK CUT" : "");
+  // Risk table from the EmberCast P(burn) map.
+  const tb = document.querySelector("#risk tbody"); tb.innerHTML = "";
+  if (e.p) {
+    const pmax = init.clusters.map(() => 0);
+    for (let c = 0; c < init.n * init.n; c++) {
+      const ch = init.cluster[c]; if (ch === ".") continue;
+      const j = ch.charCodeAt(0) - 97; pmax[j] = Math.max(pmax[j], parseInt(e.p.substr(2 * c, 2), 16) / 255);
+    }
+    init.clusters.map((cl, j) => ({ j, cl, p: pmax[j] })).sort((a, b) => b.p - a.p).forEach(({ j, cl, p }) => {
+      const k = e.crews.filter((x) => x === j).length;
+      tb.insertAdjacentHTML("beforeend", `<tr><td>${String.fromCharCode(65 + j)}</td><td>${cl.value.toFixed(0)}</td><td>${p.toFixed(2)}</td><td>${k || ""}</td></tr>`);
+    });
+  }
+  if (m.tick !== lastTick) {
+    if (m.rtt_ms >= 0 && m.rtt_ms !== lastSeenRtt) { samples.rtt.push(m.rtt_ms); lastSeenRtt = m.rtt_ms; }
+    if (m.board_ms >= 0 && m.board_ms !== lastSeenEng) { samples.eng.push(m.board_ms); lastSeenEng = m.board_ms; }
+    lastTick = m.tick;
+  }
+  setRow("r", samples.rtt, m.rtt_ms); setRow("e", samples.eng, m.board_ms);
+  document.getElementById("latSrc").textContent = init.remote ? "board_daemon over TCP" : "in-process engine";
+  hist(init.remote ? samples.rtt : samples.eng);
+  const dt = performance.now() - t0; samples.draw.push(dt); setRow("d", samples.draw, dt);
+}
+function hist(a) {
+  const c = document.getElementById("hist"), ctx = c.getContext("2d");
+  ctx.fillStyle = "#171a21"; ctx.fillRect(0, 0, c.width, c.height);
+  if (!a.length) return;
+  const lo = Math.log10(Math.max(0.01, Math.min(...a))), hi = Math.log10(Math.max(...a) * 1.01 + 0.01);
+  const B = 30, bins = new Array(B).fill(0);
+  a.forEach((v) => { const i = Math.min(B - 1, Math.floor(((Math.log10(Math.max(0.01, v)) - lo) / (hi - lo || 1)) * B)); bins[i]++; });
+  const mx = Math.max(...bins), w = c.width / B;
+  ctx.fillStyle = "#f97316";
+  bins.forEach((v, i) => { const h = (v / mx) * (c.height - 24); ctx.fillRect(i * w + 1, c.height - 18 - h, w - 2, h); });
+  ctx.fillStyle = "#9aa3b2"; ctx.font = "11px system-ui"; ctx.textAlign = "left";
+  ctx.fillText(`${Math.pow(10, lo).toFixed(2)} ms`, 2, c.height - 4); ctx.textAlign = "right";
+  ctx.fillText(`${Math.pow(10, hi).toFixed(2)} ms (log scale)`, c.width - 2, c.height - 4);
+}
+async function showResults() {
+  document.getElementById("results").style.display = "block";
+  const body = document.getElementById("resBody");
+  try {
+    const s = await (await fetch("/results/summary.json")).json();
+    const main = s.find((e) => e.tag === "main");
+    if (!main) { body.textContent = "No main TEST run in results/summary.json."; return; }
+    const P = main.policies, names = { ensemble: "EmberCast", deterministic: "B1 deterministic", front_nearest: "B0 front-nearest", oracle: "Oracle (regret reference)" };
+    let h = `<table style="max-width:720px"><tr><th>Policy</th><th>Seeds</th><th>Mean loss</th><th>CVaR95 loss</th><th>ECE</th></tr>`;
+    for (const k of ["ensemble", "deterministic", "front_nearest", "oracle"]) if (P[k])
+      h += `<tr><td>${names[k]}</td><td>${P[k].seeds}</td><td>${P[k].mean_loss.toFixed(2)}</td><td>${P[k].cvar95_loss.toFixed(2)}</td><td>${P[k].pred ? P[k].pred.ece.toFixed(4) : "–"}</td></tr>`;
+    h += `</table><br><table style="max-width:720px"><tr><th>EmberCast vs</th><th>Mean diff</th><th>95% CI</th><th>Win rate</th></tr>`;
+    for (const [b, p] of Object.entries(main.paired))
+      h += `<tr><td>${names[b]}</td><td>${p.mean_diff.toFixed(2)}</td><td>[${p.ci95[0].toFixed(2)}, ${p.ci95[1].toFixed(2)}]</td><td>${p.win_rate.toFixed(2)}</td></tr>`;
+    body.innerHTML = h + "</table>";
+  } catch (err) { body.textContent = "results/summary.json not found. Run scripts/run_evaluation.sh."; }
+}
+</script>
+</body>
+</html>

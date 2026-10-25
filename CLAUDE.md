@@ -51,8 +51,17 @@ ctest --test-dir build --output-on-failure
 .venv/bin/pytest -q
 ```
 
-## 5. Benchmark commands
-Step 6 adds `apps/bench`. Until then, no benchmark exists.
+## 5. Benchmark and evaluation commands
+```
+build/apps/embercast_bench --backend cpu_opt --threads 1 --episodes 10
+build/apps/embercast_bench --backend cpu_opt --threads 1 --episodes 10 --baseline bench/baseline_laptop.txt
+.venv/bin/python -m laptop.tools.bench_report --raw results/raw/bench/*_raw.csv --out results/bench_laptop.md
+scripts/run_evaluation.sh        # TEST seeds -> results/report.md
+scripts/e2e_demo.sh              # 60-second live run on localhost
+./scripts/demo_laptop.sh         # laptop demo, http://127.0.0.1:8000/
+bash scripts/print_board_build.sh   # prints the board commands only
+```
+Never tune on TEST seeds. Use `--set tune` for parameter choice.
 
 ## 6. Repository layout
 | Path | Content |
@@ -66,7 +75,9 @@ Step 6 adds `apps/bench`. Until then, no benchmark exists.
 | `bridge/` | MCU sidecar (router bridge to UDS) |
 | `mcu/sensor_station/` | Arduino sketch for the STM32U585 |
 | `integrations/` | Optional sinks. All off by default. |
-| `scripts/` | Scripts that PRINT board commands. They never run them. |
+| `scripts/` | Laptop scripts (demo, evaluation, e2e). `print_board_*.sh` PRINT board commands; they never run them. |
+| `bench/` | Saved laptop p99 baseline for the regression check |
+| `results/` | Generated reports (raw CSV in `results/raw/`, gitignored) |
 | `third_party/doctest/` | Vendored doctest single header |
 | `tests/cpp/`, `tests/py/` | Tests |
 | `datasets/` | Generated data (gitignored) |

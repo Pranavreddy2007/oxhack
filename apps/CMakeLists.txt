@@ -1,2 +1,8 @@
 add_executable(embercast_replay replay/main.cpp)
 target_link_libraries(embercast_replay PRIVATE embercast_sim)
+add_executable(embercast_bench bench/main.cpp)
+target_link_libraries(embercast_bench PRIVATE embercast_sim)
+add_executable(embercast_board_daemon board_daemon/main.cpp)
+target_link_libraries(embercast_board_daemon PRIVATE embercast_sim)
+add_executable(embercast_sim_stream sim_stream/main.cpp)
+target_link_libraries(embercast_sim_stream PRIVATE embercast_sim)
