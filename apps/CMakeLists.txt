@@ -1,0 +1,2 @@
+add_executable(embercast_replay replay/main.cpp)
+target_link_libraries(embercast_replay PRIVATE embercast_sim)

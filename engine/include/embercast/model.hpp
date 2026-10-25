@@ -55,31 +55,61 @@ inline std::uint32_t prob_to_threshold(double p) {
 
 // Per-tick ignition probability from one burning neighbour in direction d.
 // The spread vector is from the neighbour to the target: (-kDx[d], -kDy[d]).
-inline double ignition_prob(const ModelConst& mc, int fuel, int d, int sbin, int crews,
-                            const Weather& w, const Theta& th) {
+// The factors are split so that build_thresholds() needs few exp() calls.
+inline double wind_factor(const ModelConst& mc, int d, const Weather& w, const Theta& th) {
   const double sx = -kDx[d], sy = -kDy[d];
   const double len = std::sqrt(sx * sx + sy * sy);
   const double dir = double(w.wind_dir) + th.wind_bias;
   const double cos_t = (sx * std::cos(dir) + sy * std::sin(dir)) / len;
-  const double f_wind = std::exp(mc.k_wind * w.wind_speed * cos_t);
-  const double dz = (sbin - kSlopeBins / 2) * double(mc.slope_bin_m);
-  const double f_slope = std::exp(mc.k_slope * dz);
+  double f = std::exp(mc.k_wind * w.wind_speed * cos_t);
+  if (len > 1.5) f *= 0.70710678118654752;  // diagonal neighbour
+  return f;
+}
+inline double slope_factor(const ModelConst& mc, int sbin) {
+  return std::exp(mc.k_slope * (sbin - kSlopeBins / 2) * double(mc.slope_bin_m));
+}
+inline double moisture_factor(const ModelConst& mc, const Weather& w, const Theta& th) {
   double h = double(w.humidity) + th.moisture_bias;
   h = h < 0.0 ? 0.0 : (h > 1.0 ? 1.0 : h);
-  const double f_moist = std::exp(-mc.k_moist * (h - mc.h_ref));
-  double r = mc.base_rate[fuel] * f_wind * f_slope * f_moist * th.spread_scale;
-  if (len > 1.5) r *= 0.70710678118654752;  // diagonal neighbour
-  const double p = 1.0 - std::exp(-r);
-  return p * (1.0 - crew_efficacy(mc, crews));
+  return std::exp(-mc.k_moist * (h - mc.h_ref));
+}
+
+inline double ignition_prob(const ModelConst& mc, int fuel, int d, int sbin, int crews,
+                            const Weather& w, const Theta& th) {
+  const double r = mc.base_rate[fuel] * wind_factor(mc, d, w, th) * slope_factor(mc, sbin) *
+                   moisture_factor(mc, w, th) * th.spread_scale;
+  return (1.0 - std::exp(-r)) * (1.0 - crew_efficacy(mc, crews));
 }
 
 inline void build_thresholds(const ModelConst& mc, const Weather& w, const Theta& th,
                              ThresholdTable& out) {
+  double fw[kDirs], fs[kSlopeBins], keep[kMaxCrews + 1];
+  for (int d = 0; d < kDirs; ++d) fw[d] = wind_factor(mc, d, w, th);
+  for (int s = 0; s < kSlopeBins; ++s) fs[s] = slope_factor(mc, s);
+  for (int c = 0; c <= kMaxCrews; ++c) keep[c] = 1.0 - crew_efficacy(mc, c);
+  const double fm = moisture_factor(mc, w, th) * th.spread_scale;
   for (int f = 0; f < kFuelClasses; ++f)
     for (int d = 0; d < kDirs; ++d)
-      for (int s = 0; s < kSlopeBins; ++s)
-        for (int c = 0; c <= kMaxCrews; ++c)
-          out.t[f][d][s][c] = prob_to_threshold(ignition_prob(mc, f, d, s, c, w, th));
+      for (int s = 0; s < kSlopeBins; ++s) {
+        const double r = mc.base_rate[f] * fw[d] * fs[s] * fm;
+        const double p = 1.0 - std::exp(-r);
+        for (int c = 0; c <= kMaxCrews; ++c) out.t[f][d][s][c] = prob_to_threshold(p * keep[c]);
+      }
+}
+
+// Prior over the hidden parameters. The same for all seeds. The engine knows it.
+struct ThetaPrior {
+  float wind_bias_sd = 0.35f, wind_bias_max = 0.9f;
+  float log_s_sd = 0.30f, s_min = 0.4f, s_max = 2.5f;
+  float moist_sd = 0.08f, moist_max = 0.25f;
+};
+
+inline Theta clamp_theta(const ThetaPrior& p, Theta t) {
+  auto cl = [](float v, float lo, float hi) { return v < lo ? lo : (v > hi ? hi : v); };
+  t.wind_bias = cl(t.wind_bias, -p.wind_bias_max, p.wind_bias_max);
+  t.spread_scale = cl(t.spread_scale, p.s_min, p.s_max);
+  t.moisture_bias = cl(t.moisture_bias, -p.moist_max, p.moist_max);
+  return t;
 }
 
 // Compute slope bins for all cells. Call once after the terrain is made.

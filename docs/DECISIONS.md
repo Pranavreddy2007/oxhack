@@ -72,3 +72,46 @@ rule also has an entry.
 - Stuck: the station repeats the same values. It does not set a flag. The
   engine must find it (three identical frames).
 - Out of range: humidity = 1.7. The engine must reject it.
+
+## D-010: Rollout crews and the crew-free loss (Step 4)
+- Decision: the forecast rolls out each member with the crews of the
+  current plan (target clusters, as if the crews have arrived). The policy
+  then divides L[k][j] by (1 - e(n_j)) to get the crew-free loss and
+  applies loss_k(a) = sum_j (1 - e(n_j(a))) * L_free[k][j].
+- Reason: one rollout gives P(burn) for the plan in force (good for
+  calibration) and the loss matrix for the optimiser. A second crew-free
+  rollout doubles the cost.
+- Cost: the linear model is an approximation. The truth simulator gives
+  the measured loss, so the approximation cannot inflate the reported gain.
+
+## D-011: Observation assimilation in every member
+- Decision: after the weights, the filter sets each observed fire cell
+  that is UNBURNED in a member to BURNING with B/2 ticks left. B1 does the
+  same with its single member.
+- Reason: with K = 64 members the stochastic front drifts away from the
+  observed front. The correction keeps all members near the data. This is
+  common practice for fire data assimilation.
+
+## D-012: Late perimeter scans
+- Decision: a scan older than max_late_ticks (6) is dropped and counted.
+  A newer late scan is compared with the member state at the current tick.
+- Cost: the "extra" term (member has fire where the scan saw none) is too
+  large for late scans, because the member front has moved. extra_w = 0.3
+  reduces this effect.
+
+## D-013: Baseline definitions
+- B1 (deterministic): K = 1, theta = prior mean (no bias, s = 1), no
+  weights, no resampling, no process noise, lambda = 0, same greedy
+  optimiser and switching cost, same assimilation.
+- B0 (front-nearest): score_j = value_j / (1 + distance to the nearest
+  observed fire cell). Greedy on score_j * (e(n+1) - e(n)). No model.
+- ORACLE: a copy of the truth simulator runs H ticks with no crews and the
+  true random numbers. The greedy optimiser uses that true loss (lambda = 0).
+
+## D-014: Cluster "lost" and the metric cell set
+- A cluster is lost when the newly burned value in the horizon is at least
+  25 % of the cluster value.
+- P(burn) metrics use the cells that are UNBURNED in the truth at the
+  forecast tick and within 12 cells (Chebyshev) of the true footprint.
+  Far cells have P = 0 and outcome 0. They would make the scores look
+  better than they are.

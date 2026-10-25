@@ -28,13 +28,6 @@ struct ObsParams {
   int scan_late_ticks = 3;
 };
 
-// The prior over theta. It is the same for all seeds. The engine knows it.
-struct ThetaPrior {
-  float wind_bias_sd = 0.35f, wind_bias_max = 0.9f;
-  float log_s_sd = 0.30f, s_min = 0.4f, s_max = 2.5f;
-  float moist_sd = 0.08f, moist_max = 0.25f;
-};
-
 struct TruthParams {
   Theta theta0;
   Theta drift_sd{0.01f, 0.006f, 0.003f};  // per tick (s: multiplicative)
@@ -72,8 +65,5 @@ Scenario make_scenario(std::uint64_t seed, const ScenarioOptions& opt = {});
 
 // Initial fire state: the ignition cell and its 4 neighbours burn.
 void initial_state(const Scenario& sc, std::uint8_t* state);
-
-// Clamp helpers shared by the truth simulator and the filter.
-Theta clamp_theta(const ThetaPrior& p, Theta t);
 
 }  // namespace embercast

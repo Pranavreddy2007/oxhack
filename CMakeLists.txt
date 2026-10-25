@@ -25,6 +25,7 @@ find_package(Threads REQUIRED)
 
 add_subdirectory(engine)
 add_subdirectory(sim)
+add_subdirectory(apps)
 
 if(EMBERCAST_BUILD_TESTS)
   enable_testing()

@@ -49,13 +49,6 @@ bool parse_stress(const std::string& s, Stress& out) {
   return false;
 }
 
-Theta clamp_theta(const ThetaPrior& p, Theta t) {
-  t.wind_bias = std::clamp(t.wind_bias, -p.wind_bias_max, p.wind_bias_max);
-  t.spread_scale = std::clamp(t.spread_scale, p.s_min, p.s_max);
-  t.moisture_bias = std::clamp(t.moisture_bias, -p.moist_max, p.moist_max);
-  return t;
-}
-
 void initial_state(const Scenario& sc, std::uint8_t* state) {
   const Terrain& t = sc.terrain;
   std::fill(state, state + t.cells(), kUnburned);
